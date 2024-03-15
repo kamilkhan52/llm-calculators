@@ -1,0 +1,11 @@
+{
+    "num_layers": 128,
+    "hidden_dim": 10248,
+    "batch_size": 5000,
+    "seq_length": 1024,
+    "checkpoint_interval": 100,
+    "attn_heads": 100,
+    "unit": "GB",
+    "gpu_memory_gb":80,
+    "peak_tflops": 70
+  }

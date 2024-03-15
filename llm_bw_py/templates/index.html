@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LLM Training Bandwidth Requirement Calculator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        label {
+            display: inline-block;
+            width: 300px;
+        }
+        input[type="number"],
+        select {
+            width: 300px;
+            padding: 5px;
+            margin-bottom: 10px;
+        }
+        input[type="submit"] {
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+        .output {
+            margin-top: 20px;
+        }
+        .output p {
+            margin-bottom: 10px;
+        }
+        .formula {
+            font-family: 'Times New Roman', Times, serif;
+            font-style: italic;
+            font-size: 20px;
+        }
+        .slider-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .slider {
+            flex: 1;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Bandwidth Requirement Calculator</h1>
+    {% if preloaded_file %}
+    <p>Preloaded values from: {{ preloaded_file }}</p>
+    {% endif %}
+    
+    <form method="POST">
+        <div class="slider-container">
+            <label for="num_layers">Number of Layers (<span class="formula">nl</span>):</label>
+            <input type="number" id="num_layers" name="num_layers" value="{{ input_data.num_layers if input_data else default_input.num_layers }}" required>
+            <input type="range" min="0" max="{{ ((input_data.num_layers if input_data else default_input.num_layers) * 2) | int }}" value="{{ input_data.num_layers if input_data else default_input.num_layers }}" class="slider" id="num_layers_slider">
+        </div>
+    
+        <div class="slider-container">
+            <label for="hidden_dim">Hidden Dimension (<span class="formula">hd</span>):</label>
+            <input type="number" id="hidden_dim" name="hidden_dim" value="{{ input_data.hidden_dim if input_data else default_input.hidden_dim }}" required>
+            <input type="range" min="0" max="{{ ((input_data.hidden_dim if input_data else default_input.hidden_dim) * 2) | int }}" value="{{ input_data.hidden_dim if input_data else default_input.hidden_dim }}" class="slider" id="hidden_dim_slider">
+        </div>
+    
+        <div class="slider-container">
+            <label for="batch_size">Batch Size (<span class="formula">bsz</span>):</label>
+            <input type="number" id="batch_size" name="batch_size" value="{{ input_data.batch_size if input_data else default_input.batch_size }}" required>
+            <input type="range" min="0" max="{{ ((input_data.batch_size if input_data else default_input.batch_size) * 2) | int }}" value="{{ input_data.batch_size if input_data else default_input.batch_size }}" class="slider" id="batch_size_slider">
+        </div>
+    
+        <div class="slider-container">
+            <label for="seq_length">Sequence Length (<span class="formula">seq</span>):</label>
+            <input type="number" id="seq_length" name="seq_length" value="{{ input_data.seq_length if input_data else default_input.seq_length }}" required>
+            <input type="range" min="0" max="{{ ((input_data.seq_length if input_data else default_input.seq_length) * 2) | int }}" value="{{ input_data.seq_length if input_data else default_input.seq_length }}" class="slider" id="seq_length_slider">
+        </div>
+    
+        <div class="slider-container">
+            <label for="checkpoint_interval">Checkpoint Interval (<span class="formula">ci</span>):</label>
+            <input type="number" id="checkpoint_interval" name="checkpoint_interval" value="{{ input_data.checkpoint_interval if input_data else default_input.checkpoint_interval }}" required>
+            <input type="range" min="0" max="{{ ((input_data.checkpoint_interval if input_data else default_input.checkpoint_interval) * 2) | int }}" value="{{ input_data.checkpoint_interval if input_data else default_input.checkpoint_interval }}" class="slider" id="checkpoint_interval_slider">
+        </div>
+    
+        <div class="slider-container">
+            <label for="attn_heads">Attention Heads (<span class="formula">attn_heads</span>)</label>
+            <input type="number" id="attn_heads" name="attn_heads" value="{{ input_data.attn_heads if input_data else default_input.attn_heads }}" required>
+            <input type="range" min="0" max="{{ ((input_data.attn_heads if input_data else default_input.attn_heads) * 2) | int }}" value="{{ input_data.attn_heads if input_data else default_input.attn_heads }}" class="slider" id="attn_heads_slider">
+        </div>
+
+        <div class="slider-container">
+            <label for="peak_tflops">Peak TFLOPS:</label>
+            <input type="number" id="peak_tflops" name="peak_tflops" value="{{ input_data.peak_tflops if input_data else default_input.peak_tflops }}" required>
+            <input type="range" min="0" max="{{ ((input_data.peak_tflops if input_data else default_input.peak_tflops) * 2) | int }}" value="{{ input_data.peak_tflops if input_data else default_input.peak_tflops }}" class="slider" id="peak_tflops_slider">
+        </div>
+    
+        <label for="unit">BW Unit:</label>
+        <select id="unit" name="unit">
+            <option value="TB" {% if (input_data and input_data.unit == 'TB') or (not input_data and default_input.unit == 'TB') %}selected{% endif %}>TB</option>
+            <option value="GB" {% if (input_data and input_data.unit == 'GB') or (not input_data and default_input.unit == 'GB') %}selected{% endif %}>GB</option>
+            <option value="MB" {% if (input_data and input_data.unit == 'MB') or (not input_data and default_input.unit == 'MB') %}selected{% endif %}>MB</option>
+            <option value="KB" {% if (input_data and input_data.unit == 'KB') or (not input_data and default_input.unit == 'KB') %}selected{% endif %}>KB</option>
+        </select><br>
+    
+        <input type="submit" name="calculate" value="Calculate">
+        <input type="submit" name="reset" value="Reset">
+    </form>
+    
+    {% if bandwidth_requirements %}
+    <div class="output">
+        <h2>Bandwidth Requirements:</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Bandwidth</th>
+                    <th>Params &amp; Gradients</th>
+                    <th>Optimizer States</th>
+                    <th>Activation Checkpoints</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for i in range(bandwidth_requirements.bandwidth_range|length) %}
+                <tr>
+                    <td>{{ bandwidth_requirements.bandwidth_range[i] }} {{ bandwidth_requirements.bandwidth_unit }}</td>
+                    <td>{{ bandwidth_requirements.efficiency_params_gradients[i]|round(2) }}</td>
+                    <td>{{ bandwidth_requirements.efficiency_optimizer_states[i]|round(2) }}</td>
+                    <td>{{ bandwidth_requirements.efficiency_activation_checkpoints[i]|round(2) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+    <div class="reference">
+        <p>The calculations in this app are based on the paper:</p>
+        <p><a href="https://arxiv.org/pdf/2104.07857.pdf" target="_blank">ZeRO-Infinity: Breaking the GPU Memory Wall for Extreme Scale Deep Learning</a></p>
+        <p>by Samyam Rajbhandari, Olatunji Ruwase, Jeff Rasley, Shaden Smith, and Yuxiong He</p>
+    </div>
+    
+    <script>
+        document.getElementById("num_layers_slider").addEventListener("input", function() {
+            document.getElementById("num_layers").value = this.value;
+        });
+        document.getElementById("hidden_dim_slider").addEventListener("input", function() {
+            document.getElementById("hidden_dim").value = this.value;
+        });
+        document.getElementById("batch_size_slider").addEventListener("input", function() {
+            document.getElementById("batch_size").value = this.value;
+        });
+        document.getElementById("seq_length_slider").addEventListener("input", function() {
+            document.getElementById("seq_length").value = this.value;
+        });
+        document.getElementById("checkpoint_interval_slider").addEventListener("input", function() {
+            document.getElementById("checkpoint_interval").value = this.value;
+        });
+        document.getElementById("attn_heads_slider").addEventListener("input", function() {
+            document.getElementById("attn_heads").value = this.value;
+        });
+        document.getElementById("gpu_memory_gb_slider").addEventListener("input", function() {
+            document.getElementById("gpu_memory_gb").value = this.value;
+        });
+        document.getElementById("peak_tflops_slider").addEventListener("input", function() {
+            document.getElementById("peak_tflops").value = this.value;
+        });
+    </script>
+</body>
+</html>
